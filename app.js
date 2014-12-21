@@ -13,6 +13,10 @@ app.use(function*(next) {
   path = path.split('/').filter(function(item) {
     return item !== '';
   });
+
+  var action = path.pop().split('.').shift();
+
+  action && path.push(action);
   path.unshift(hostname);
   path.unshift('vhost');
   path.unshift('.');
