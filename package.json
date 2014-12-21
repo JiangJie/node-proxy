@@ -22,6 +22,6 @@
   },
   "homepage": "https://github.com/JiangJie/node-proxy",
   "dependencies": {
-    "koa": "^0.14.0"
+    "koa": "git://github.com/koajs/koa"
   }
 }
