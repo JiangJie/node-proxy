@@ -1,7 +1,18 @@
 'use strict';
 
+let assert = require('assert');
+
+let fs = require('mz/fs');
+
+let co = require('co');
 let koa = require('koa');
+
+let logger = require('koa-logger');
 let favicon = require('koa-favicon');
+let mount = require('koa-mount');
+let Router = require('koa-router');
+let vhost = require('koa-vhost');
+
 let compose = require('koa-compose');
 
 let app = koa();
@@ -14,7 +25,7 @@ app.on('error', function(err) {
 
 app.use(function*(next) {
   try {
-    yield next;
+    yield* next;
   } catch (err) {
     console.log('throw %s', err.message);
     this.app.emit('error', err, this);
@@ -27,40 +38,74 @@ app.use(function*(next) {
   }
 });
 
+app.use(logger());
 app.use(favicon());
 
-app.use(function*(next) {
-  let hostname = this.hostname;
-  let path = this.path;
+function* readVhost() {
+  let vhosts = yield fs.readdir('./vhosts');
 
-  path = path.split('/').filter(function(item) {
-    return item !== '';
+  vhosts = vhosts.map(function(item) {
+    try {
+      let vapp = koa();
+
+      let API = new Router();
+      require('./vhosts/' + item + '/router').bind(API)();
+      vapp.use(mount('/', API.middleware()));
+      return {
+        host: item,
+        app: vapp
+      };
+    } catch(e) {
+      console.log('vhost error %s', e.message);
+      return;
+    }
+  }).filter(function(item) {
+    return !!item;
+  });
+  app.use(vhost(vhosts));
+}
+co(readVhost()).then(function() {
+  console.log('start co resolve ', arguments);
+
+  app.use(function*(next) {
+    yield* next;
+
+    // debugger;
+    let hostname = this.hostname;
+    let path = this.path;
+
+    // replace //... to / on url
+    path.replace(/\/+/, '/');
+    assert.ok(path.startsWith('/'), 'path should start with /');
+
+    let index = path.lastIndexOf('.');
+    ~index && (path = path.slice(0, index));
+
+    let prefix = './vhosts/';
+    path = prefix.concat(hostname, '/modules', path);
+
+    // try {
+    let middleware = require(path);
+    // 如果只是一个generator
+    if(isGeneratorFunction(middleware)) middleware = [middleware];
+    else if(!isGeneratorFunctionArray(middleware)) this.throw(new Error('must export middleware(s)'));
+
+    let composer = compose(middleware);
+    yield* composer.call(this, next);
+    // } catch(e) {
+    //   console.error('[%s] %s', hostname, e.message);
+    //   yield next;
+    // }
   });
 
-  path.length || path.push('index');
-
-  let action = path.pop().split('.').shift();
-
-  action && path.push(action);
-  path.unshift(hostname);
-  path.unshift('vhost');
-  path.unshift('.');
-  path = path.join('/');
-  // try {
-  let middleware = require(path);
-  // 如果只是一个generator
-  if(isGeneratorFunction(middleware)) middleware = [middleware];
-  else if(!isGeneratorFunctionArray(middleware)) this.throw(new Error('must export middleware'));
-
-  let composer = compose(middleware);
-  yield composer.call(this, next);
-  // } catch(e) {
-  //   console.error('[%s] %s', hostname, e.message);
-  //   yield next;
-  // }
+  app.listen(PORT, function() {
+    console.info('koa start @ %s', PORT);
+  });
+}, function(err) {
+  console.log('start co reject ', err);
+}).catch(function(err) {
+  console.error('start co catch error %s', err.message);
 });
-
-app.listen(PORT);
 
 function isGeneratorFunction(obj) {
   return typeof obj === 'function' && obj.constructor.name === 'GeneratorFunction';
