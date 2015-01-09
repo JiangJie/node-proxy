@@ -13,7 +13,9 @@ let mount = require('koa-mount');
 let Router = require('koa-router');
 let vhost = require('koa-vhost');
 
-let compose = require('koa-compose');
+let debug = require('debug')('app');
+
+let util = require('./lib/util');
 
 let app = koa();
 
@@ -23,7 +25,7 @@ app.on('error', function(err) {
   console.error('global error %s', err.message);
 });
 
-app.use(function*(next) {
+app.use(function* error(next) {
   try {
     yield* next;
   } catch (err) {
@@ -51,6 +53,7 @@ function* readVhost() {
       let API = new Router();
       require('./vhosts/' + item + '/router').bind(API)();
       vapp.use(mount('/', API.middleware()));
+      debug('inited vhost %s', item);
       return {
         host: item,
         app: vapp
@@ -65,9 +68,9 @@ function* readVhost() {
   app.use(vhost(vhosts));
 }
 co(readVhost()).then(function() {
-  console.log('start co resolve ', arguments);
+  debug('start co resolve');
 
-  app.use(function*(next) {
+  app.use(function* defaultRouter(next) {
     yield* next;
 
     // debugger;
@@ -78,6 +81,9 @@ co(readVhost()).then(function() {
     path.replace(/\/+/, '/');
     assert.ok(path.startsWith('/'), 'path should start with /');
 
+    // url/ => url
+    path.endsWith('/') && (path = path.slice(0, -1));
+
     let index = path.lastIndexOf('.');
     ~index && (path = path.slice(0, index));
 
@@ -85,12 +91,8 @@ co(readVhost()).then(function() {
     path = prefix.concat(hostname, '/modules', path);
 
     // try {
-    let middleware = require(path);
-    // 如果只是一个generator
-    if(isGeneratorFunction(middleware)) middleware = [middleware];
-    else if(!isGeneratorFunctionArray(middleware)) this.throw(new Error('must export middleware(s)'));
-
-    let composer = compose(middleware);
+    debug('lookup handler file %s', path);
+    let composer = util.compose(require(path));
     yield* composer.call(this, next);
     // } catch(e) {
     //   console.error('[%s] %s', hostname, e.message);
@@ -99,17 +101,10 @@ co(readVhost()).then(function() {
   });
 
   app.listen(PORT, function() {
-    console.info('koa start @ %s', PORT);
+    debug('koa start @ %s', PORT);
   });
 }, function(err) {
   console.log('start co reject ', err);
 }).catch(function(err) {
   console.error('start co catch error %s', err.message);
 });
-
-function isGeneratorFunction(obj) {
-  return typeof obj === 'function' && obj.constructor.name === 'GeneratorFunction';
-}
-function isGeneratorFunctionArray(obj) {
-  return Array.isArray(obj) && obj.every(isGeneratorFunction);
-}
