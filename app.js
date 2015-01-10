@@ -2,6 +2,8 @@
 
 let assert = require('assert');
 
+require('asynctrace');
+
 let fs = require('mz/fs');
 
 let co = require('co');

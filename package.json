@@ -32,5 +32,8 @@
     "koa-router": "^3.8.0",
     "koa-vhost": "^0.5.0",
     "mz": "^1.2.1"
+  },
+  "devDependencies": {
+    "asynctrace": "^1.4.1"
   }
 }

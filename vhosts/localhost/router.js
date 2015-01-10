@@ -1,6 +1,6 @@
 'use strict';
 
-let debug = require('debug')('vhost');
+let debug = require('debug')('app:vhost');
 
 let util = require('../../lib/util');
 
