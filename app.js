@@ -2,7 +2,10 @@
 
 let assert = require('assert');
 
-require('asynctrace');
+// 记录异步代码的调用栈
+var env = process.env.NODE_ENV;
+env && (env = env.trim());
+env !== 'procudtion' && require('asynctrace');
 
 let fs = require('mz/fs');
 
@@ -13,9 +16,12 @@ let logger = require('koa-logger');
 let favicon = require('koa-favicon');
 let mount = require('koa-mount');
 let Router = require('koa-router');
-let vhost = require('koa-vhost');
+let vhost = require('vhost-koa');
 
-let debug = require('debug')('app');
+let debug = require('debug');
+let log = debug('app:log');
+let error = debug('app:error');
+error.log = console.error.bind(console);
 
 let util = require('./lib/util');
 
@@ -24,14 +30,14 @@ let app = koa();
 const PORT = 3000;
 
 app.on('error', function(err) {
-  console.error('global error %s', err.message);
+  error('global error %s', err.message);
 });
 
 app.use(function* error(next) {
   try {
     yield* next;
   } catch (err) {
-    console.log('throw %s', err.message);
+    error('throw %s', err.message);
     this.app.emit('error', err, this);
 
     this.status = err.status || 500;
@@ -55,22 +61,23 @@ function* readVhost() {
       let API = new Router();
       require('./vhosts/' + item + '/router').bind(API)();
       vapp.use(mount('/', API.middleware()));
-      debug('inited vhost %s', item);
+      log('inited vhost %s', item);
       return {
         host: item,
         app: vapp
       };
     } catch(e) {
-      console.log('vhost error %s', e.message);
+      error('vhost error %s', e.message);
       return;
     }
   }).filter(function(item) {
+    // 过滤掉空的vhost
     return !!item;
   });
   app.use(vhost(vhosts));
 }
 co(readVhost()).then(function() {
-  debug('start co resolve');
+  log('start co resolve');
 
   app.use(function* defaultRouter(next) {
     yield* next;
@@ -93,20 +100,20 @@ co(readVhost()).then(function() {
     path = prefix.concat(hostname, '/modules', path);
 
     // try {
-    debug('lookup handler file %s', path);
+    log('lookup handler file %s', path);
     let composer = util.compose(require(path));
     yield* composer.call(this, next);
     // } catch(e) {
-    //   console.error('[%s] %s', hostname, e.message);
+    //   error('[%s] %s', hostname, e.message);
     //   yield next;
     // }
   });
 
   app.listen(PORT, function() {
-    debug('koa start @ %s', PORT);
+    log('koa start @ %s', PORT);
   });
 }, function(err) {
-  console.log('start co reject ', err);
+  error('start co reject %s', err.message);
 }).catch(function(err) {
-  console.error('start co catch error %s', err.message);
+  error('start co catch error %s', err.message);
 });
