@@ -1,43 +1,43 @@
 'use strict';
 
-let assert = require('assert');
+const assert = require('assert');
 
 // 记录异步代码的调用栈
-var env = process.env.NODE_ENV;
+let env = process.env.NODE_ENV;
 env && (env = env.trim());
 env !== 'procudtion' && require('asynctrace');
 
-let fs = require('mz/fs');
+const fs = require('mz/fs');
 
-let co = require('co');
-let koa = require('koa');
+const co = require('co');
+const koa = require('koa');
 
-let logger = require('koa-logger');
-let favicon = require('koa-favicon');
-let mount = require('koa-mount');
-let Router = require('koa-router');
-let vhost = require('vhost-koa');
+const logger = require('koa-logger');
+const favicon = require('koa-favicon');
+const mount = require('koa-mount');
+const Router = require('koa-router');
+const vhost = require('vhost-koa');
 
-let debug = require('debug');
-let log = debug('app:log');
-let error = debug('app:error');
+const debug = require('debug');
+const log = debug('app:log');
+const error = debug('app:error');
 error.log = console.error.bind(console);
 
-let util = require('./lib/util');
+const util = require('./lib/util');
 
-let app = koa();
+const app = koa();
 
 const PORT = 3000;
 
 app.on('error', function(err) {
-  error('global error %s', err.message);
+  error('global error %s', err.stack);
 });
 
 app.use(function* error(next) {
   try {
     yield* next;
   } catch (err) {
-    error('throw %s', err.message);
+    error('throw %s', err.stack);
     this.app.emit('error', err, this);
 
     this.status = err.status || 500;
@@ -56,9 +56,9 @@ function* readVhost() {
 
   vhosts = vhosts.map(function(item) {
     try {
-      let vapp = koa();
+      const vapp = koa();
 
-      let API = new Router();
+      const API = new Router();
       require('./vhosts/' + item + '/router').bind(API)();
       vapp.use(mount('/', API.middleware()));
       log('inited vhost %s', item);
@@ -67,7 +67,7 @@ function* readVhost() {
         app: vapp
       };
     } catch(e) {
-      error('vhost error %s', e.message);
+      error('vhost error %s', e.stack);
       return;
     }
   }).filter(function(item) {
@@ -83,7 +83,7 @@ co(readVhost()).then(function() {
     yield* next;
 
     // debugger;
-    let hostname = this.hostname;
+    const hostname = this.hostname;
     let path = this.path;
 
     // replace //... to / on url
@@ -93,27 +93,22 @@ co(readVhost()).then(function() {
     // url/ => url
     path.endsWith('/') && (path = path.slice(0, -1));
 
-    let index = path.lastIndexOf('.');
+    const index = path.lastIndexOf('.');
     ~index && (path = path.slice(0, index));
 
-    let prefix = './vhosts/';
+    const prefix = './vhosts/';
     path = prefix.concat(hostname, '/modules', path);
 
-    // try {
     log('lookup handler file %s', path);
-    let composer = util.compose(require(path));
+    const composer = util.compose(require(path));
     yield* composer.call(this, next);
-    // } catch(e) {
-    //   error('[%s] %s', hostname, e.message);
-    //   yield next;
-    // }
   });
 
   app.listen(PORT, function() {
     log('koa start @ %s', PORT);
   });
 }, function(err) {
-  error('start co reject %s', err.message);
+  error('start co reject %s', err.stack);
 }).catch(function(err) {
-  error('start co catch error %s', err.message);
+  error('start co catch error %s', err.stack);
 });
