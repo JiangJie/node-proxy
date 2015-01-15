@@ -1,22 +1,46 @@
 'use strict';
 
-let debug = require('debug')('app:vhost');
+const debug = require('debug');
+const log = debug('app:log:vhost');
+const error = debug('app:error:vhost');
+error.log = console.log.bind(console);
 
-let util = require('../../lib/util');
+const util = require('../../lib/util');
 
-let router = new Map();
+// use Map tp support RegExp
+const router = new Map([[/\/a\/b\/(\d+)/, './modules/test1.js']]);
 
-router.set(/\/a\/b\/(\d+)/, './modules/test1.js');
+// router.set(/\/a\/b\/(\d+)/, './modules/test1.js');
 
 module.exports = function() {
-  // this is a router
-  router.forEach(function(v, k) {
+  // this is a koa router
+  // router.forEach(function(v, k) {
+  //   try {
+  //     log('lookup handler file %s', v);
+  //     const composer = util.compose(require(v));
+  //     this.get(k, composer);
+  //   } catch(e) {
+  //     error('router error %s', e.stack);
+  //   }
+  // }, this);
+
+  // for(let [k, v] of router.entries()) {
+  //   try {
+  //     log('lookup handler file %s', v);
+  //     const composer = util.compose(require(v));
+  //     this.get(k, composer);
+  //   } catch(e) {
+  //     error('router error %s', e.stack);
+  //   }
+  // }
+
+  for(const route of router.entries()) {
     try {
-      debug('lookup handler file %s', v);
-      let composer = util.compose(require(v));
-      this.get(k, composer);
+      log('lookup handler file %s', route[1]);
+      const composer = util.compose(require(route[1]));
+      this.get(route[0], composer);
     } catch(e) {
-      console.errpr('router error %s', e.message);
+      error('router error %s', e.stack);
     }
-  }, this);
+  }
 };

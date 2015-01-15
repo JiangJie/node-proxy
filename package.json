@@ -4,6 +4,7 @@
   "description": "a node vhost proxy container based on koa",
   "main": "app.js",
   "scripts": {
+    "dev": "set DEBUG=* && node-dev app.js",
     "test": ""
   },
   "repository": {

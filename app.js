@@ -5,7 +5,7 @@ const assert = require('assert');
 // 记录异步代码的调用栈
 let env = process.env.NODE_ENV;
 env && (env = env.trim());
-env !== 'procudtion' && require('asynctrace');
+env === 'debug' && require('asynctrace');
 
 const fs = require('mz/fs');
 
@@ -25,19 +25,22 @@ error.log = console.error.bind(console);
 
 const util = require('./lib/util');
 
-const app = koa();
-
 const PORT = 3000;
 
-app.on('error', function(err) {
-  error('global error %s', err.stack);
+const app = koa();
+
+// settting
+app.powerdBy = false;
+app.proxy = true;
+
+app.on('error', function(err, ctx) {
+  error('path %s cause error %s', ctx && ctx.path, err.stack);
 });
 
 app.use(function* error(next) {
   try {
     yield* next;
   } catch (err) {
-    error('throw %s', err.stack);
     this.app.emit('error', err, this);
 
     this.status = err.status || 500;
@@ -70,9 +73,6 @@ function* readVhost() {
       error('vhost error %s', e.stack);
       return;
     }
-  }).filter(function(item) {
-    // 过滤掉空的vhost
-    return !!item;
   });
   app.use(vhost(vhosts));
 }
