@@ -2,7 +2,7 @@
 
 module.exports = [function*(next) {
   // this.body = 'hello';
-  yield next;
+  yield* next;
 }, function*(next) {
   this.body = 'hello';
 }];

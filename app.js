@@ -53,7 +53,7 @@ co(middleware.readVhosts()()).then(function(vhosts) {
     }));
 
     // 启动
-    app.listen(PORT, function() {
+    module.parent || app.listen(PORT, function() {
         log('koa start @ %s @ %s', PORT, new Date());
     });
 }, function(err) {
