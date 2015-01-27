@@ -5,8 +5,8 @@
   "main": "app.js",
   "scripts": {
     "test": "node_modules/.bin/mocha --harmony -R spec -t 5000 test/*.js",
-    "test-cov": "node --harmony node_modules/.bin/istanbul cover node_modules/.bin/_mocha -- -R dot -t 5000 test/*.js",
-    "test-travis": "node --harmony node_modules/.bin/istanbul cover node_modules/.bin/_mocha --report lcovonly -- -R dot -t 5000 test/*.js",
+    "test-cov": "node --harmony node_modules/.bin/istanbul cover node_modules/.bin/_mocha -- -R spec -t 5000 test/*.js",
+    "test-travis": "node --harmony node_modules/.bin/istanbul cover node_modules/.bin/_mocha --report lcovonly -- -R spec -t 5000 test/*.js",
     "local": "set NODE_DEBUG=* && set DEBUG=* && node-dev app.js",
     "debug": "set NODE_DEBUG=* && set DEBUG=* && node-dev --debug app.js",
     "test-debug": "pm2 startOrRestart pm2debug.json",
