@@ -1,0 +1,11 @@
+{
+    "apps": [{
+        "name": "iojs-proxy-production",
+        "script": "app.js",
+        "instances": 4,
+        "env": {
+            "NODE_ENV": "production",
+            "DEBUG": "app:*"
+        }
+    }]
+}

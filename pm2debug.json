@@ -1,0 +1,10 @@
+{
+    "apps": [{
+        "name": "iojs-proxy-debug",
+        "script": "app.js",
+        "env": {
+            "NODE_ENV": "debug",
+            "DEBUG": "*"
+        }
+    }]
+}

@@ -1,21 +1,15 @@
 'use strict';
 
-const assert = require('assert');
-
 // 记录异步代码的调用栈
 let env = process.env.NODE_ENV;
 env && (env = env.trim());
 env === 'debug' && require('asynctrace');
-
-const fs = require('mz/fs');
 
 const co = require('co');
 const koa = require('koa');
 
 const logger = require('koa-logger');
 const favicon = require('koa-favicon');
-const mount = require('koa-mount');
-const Router = require('koa-router');
 const vhost = require('vhost-koa');
 
 const debug = require('debug');
@@ -23,9 +17,10 @@ const log = debug('app:log');
 const error = debug('app:error');
 error.log = console.error.bind(console);
 
-const util = require('./lib/util');
+const config = require('./config');
+const middleware = require('./lib/middleware');
 
-const PORT = 3000;
+const PORT = config.port;
 
 const app = koa();
 
@@ -34,81 +29,37 @@ app.powerdBy = false;
 app.proxy = true;
 
 app.on('error', function(err, ctx) {
-  error('path %s cause error %s', ctx && ctx.path, err.stack);
+    error('path %s cause error %s', ctx && ctx.path, err.stack);
 });
 
-app.use(function* error(next) {
-  try {
-    yield* next;
-  } catch (err) {
-    this.app.emit('error', err, this);
+// 后面所有middlware抛的异常都在这捕获
+app.use(middleware.error());
 
-    this.status = err.status || 500;
-
-    this.body = {
-      message: err.message || 'Internal Server Error'
-    };
-  }
-});
-
+// 记录日志
 app.use(logger());
+
+// 处理favicon
 app.use(favicon());
 
-function* readVhost() {
-  let vhosts = yield fs.readdir('./vhosts');
+co(middleware.readVhosts()()).then(function(vhosts) {
+    // 注册vhost，即自定义路由
+    app.use(vhost(vhosts));
 
-  vhosts = vhosts.map(function(item) {
-    try {
-      const vapp = koa();
+    // 默认路由，必须在自定义路由之后
+    app.use(middleware.defaultRouter());
 
-      const API = new Router();
-      require('./vhosts/' + item + '/router').bind(API)();
-      vapp.use(mount('/', API.middleware()));
-      log('inited vhost %s', item);
-      return {
-        host: item,
-        app: vapp
-      };
-    } catch(e) {
-      error('vhost error %s', e.stack);
-      return;
-    }
-  });
-  app.use(vhost(vhosts));
-}
-co(readVhost()).then(function() {
-  log('start co resolve');
+    log('already registed middlewares: %s', app.middleware.map(function(item) {
+        return item.name;
+    }));
 
-  app.use(function* defaultRouter(next) {
-    yield* next;
-
-    // debugger;
-    const hostname = this.hostname;
-    let path = this.path;
-
-    // replace //... to / on url
-    path.replace(/\/+/, '/');
-    assert.ok(path.startsWith('/'), 'path should start with /');
-
-    // url/ => url
-    path.endsWith('/') && (path = path.slice(0, -1));
-
-    const index = path.lastIndexOf('.');
-    ~index && (path = path.slice(0, index));
-
-    const prefix = './vhosts/';
-    path = prefix.concat(hostname, '/modules', path);
-
-    log('lookup handler file %s', path);
-    const composer = util.compose(require(path));
-    yield* composer.call(this, next);
-  });
-
-  app.listen(PORT, function() {
-    log('koa start @ %s', PORT);
-  });
+    // 启动
+    app.listen(PORT, function() {
+        log('koa start @ %s @ %s', PORT, new Date());
+    });
 }, function(err) {
-  error('start co reject %s', err.stack);
+    error('start co reject %s', err.stack);
+    throw err;
 }).catch(function(err) {
-  error('start co catch error %s', err.stack);
+    error('start co catch error %s', err.stack);
+    throw err;
 });

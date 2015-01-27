@@ -4,8 +4,11 @@
   "description": "a node vhost proxy container based on koa",
   "main": "app.js",
   "scripts": {
-    "dev": "set DEBUG=* && node-dev app.js",
-    "test": ""
+    "local": "set NODE_DEBUG=* && set DEBUG=* && node-dev app.js",
+    "debug": "set NODE_DEBUG=* && set DEBUG=* && node-dev --debug app.js",
+    "test-debug": "pm2 startOrRestart pm2debug.json",
+    "test": "pm2 startOrRestart pm2test.json",
+    "idc": "pm2 startOrRestart pm2production.json"
   },
   "repository": {
     "type": "git",
@@ -25,7 +28,7 @@
   "dependencies": {
     "co": "^4.1.0",
     "debug": "^2.1.1",
-    "koa": "^0.14.0",
+    "koa": "^0.15.0",
     "koa-compose": "^2.3.0",
     "koa-favicon": "^1.2.0",
     "koa-logger": "^1.2.2",
@@ -35,6 +38,6 @@
     "vhost-koa": "0.0.3"
   },
   "devDependencies": {
-    "asynctrace": "^1.4.1"
+    "asynctrace": "^1.0.7"
   }
 }
