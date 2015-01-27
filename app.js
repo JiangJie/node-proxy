@@ -22,7 +22,7 @@ const middleware = require('./lib/middleware');
 
 const PORT = config.port;
 
-const app = koa();
+const app = module.exports = koa();
 
 // settting
 app.powerdBy = false;
@@ -33,7 +33,7 @@ app.on('error', function(err, ctx) {
 });
 
 // 后面所有middlware抛的异常都在这捕获
-app.use(middleware.error());
+app.use(middleware.firstHandler());
 
 // 记录日志
 app.use(logger());

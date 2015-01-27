@@ -10,7 +10,7 @@ error.log = console.log.bind(console);
 const util = require('../../lib/util');
 
 // use Map tp support RegExp
-const router = new Map([[/\/a\/b\/(\d+)/, './modules/test1.js']]);
+const router = new Map([[/\/a\/b\/(\d+)/, './modules/test/index.js']]);
 
 // router.set(/\/a\/b\/(\d+)/, './modules/test1.js');
 
