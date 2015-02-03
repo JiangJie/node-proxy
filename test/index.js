@@ -17,6 +17,7 @@ describe('node-proxy', function () {
         it('should get string test', function (done) {
             request(app.listen())
                 .get('/test')
+                .set('Host', 'localhost')
                 .expect('test')
                 .expect(200, done);
         });
